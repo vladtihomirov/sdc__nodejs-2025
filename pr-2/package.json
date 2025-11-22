@@ -9,6 +9,7 @@
   "scripts": {
     "run": "node src/index.js",
     "run:verbose": "node src/index.js --verbose",
-    "run:quiet": "node src/index.js --quiet"
+    "run:quiet": "node src/index.js --quiet",
+    "backup:report": "node src/report-runner.js"
   }
 }

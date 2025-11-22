@@ -1,6 +1,7 @@
 const JsonStorage = require('./json-storage');
 const path = require('path');
 const Logger = require('./logger').getInstance();
+const EventEmitter = require('events');
 
 class Student {
     /**
@@ -17,55 +18,60 @@ class Student {
     }
 }
 
-class StudentRepository {
+class StudentRepository extends EventEmitter {
     #studentStorage = new JsonStorage(path.join(process.cwd(), "students.json"))
 
     constructor() {
-        this.#studentStorage.save("");
+        super();
     }
 
-    addStudent(id, name, age, group) {
+    async addStudent(id, name, age, group) {
         const student = new Student(id, name, age, group);
-        const existingStudents = this.getAllStudents();
+        const existingStudents = await this.getAllStudents();
 
         existingStudents.push(student);
 
-        this.#studentStorage.save(existingStudents);
-        Logger.log(`Added student ${name}: `, student);
+        await this.#studentStorage.save(existingStudents);
+
+        this.emit('add', student);
 
         return student;
     }
 
-    removeStudent(id) {
-        const existingStudents = this.getAllStudents();
+    async removeStudent(id) {
+        this.emit('student-removing', { id });
+
+        const existingStudents = await this.getAllStudents();
         const student = existingStudents.find(student => student.id === id);
 
         if (!student) {
-            throw new Error(`Student with id ${id} not found`);
+            const error = new Error(`Student with id ${id} not found`);
+            this.emit('student-remove-error', error);
+            throw error;
         }
 
-        this.#studentStorage.save(existingStudents.filter(student => student.id !== id));
-        Logger.log(`Removed student with ID ${id}`);
+        await this.#studentStorage.save(existingStudents.filter(student => student.id !== id));
+        this.emit('remove', student);
 
         return student;
     }
 
-    getStudentById(id) {
-        const existingStudents = this.getAllStudents();
+    async getStudentById(id) {
+        const existingStudents = await this.getAllStudents();
         return existingStudents.find(student => student.id === id) || null;
     }
 
-    getStudentsByGroup(group) {
-        const existingStudents = this.getAllStudents();
+    async getStudentsByGroup(group) {
+        const existingStudents = await this.getAllStudents();
         return existingStudents.filter(student => student.group === group) || [];
     }
 
-    getAllStudents() {
-        return this.#studentStorage.load() || [];
+    async getAllStudents() {
+        return await this.#studentStorage.load() || [];
     }
 
-    calculateAverageAge() {
-        const existingStudents = this.getAllStudents();
+    async calculateAverageAge() {
+        const existingStudents = await this.getAllStudents();
         return Math.floor(existingStudents.reduce((acc, student) => acc + student.age, 0) / existingStudents.length);
     }
 

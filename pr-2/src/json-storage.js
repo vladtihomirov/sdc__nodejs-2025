@@ -1,4 +1,5 @@
-const fs = require('fs');
+const fs = require('fs').promises;
+const fsSync = require('fs');
 const path = require('path');
 
 class JsonStorage {
@@ -8,18 +9,28 @@ class JsonStorage {
         this.#filePath = filePath;
     }
 
-    load() {
-        if (!fs.existsSync(this.#filePath)) {
-            return null;
+    async load() {
+        try {
+            if (!fsSync.existsSync(this.#filePath)) {
+                return null;
+            }
+            const data = await fs.readFile(this.#filePath, { encoding: 'utf8', flag: 'r' });
+            return JSON.parse(data);
+        } catch (error) {
+            throw new Error(`Failed to load data from ${this.#filePath}: ${error.message}`);
         }
-        return JSON.parse(fs.readFileSync(this.#filePath, { encoding: 'utf8', flag: 'r' }));
     }
 
-    save(contents) {
-        if (!fs.existsSync(path.dirname(this.#filePath))) {
-            fs.mkdirSync(path.dirname(this.#filePath));
+    async save(contents) {
+        try {
+            const dir = path.dirname(this.#filePath);
+            if (!fsSync.existsSync(dir)) {
+                await fs.mkdir(dir, { recursive: true });
+            }
+            await fs.writeFile(this.#filePath, JSON.stringify(contents, null, 2));
+        } catch (error) {
+            throw new Error(`Failed to save data to ${this.#filePath}: ${error.message}`);
         }
-        fs.writeFileSync(this.#filePath, JSON.stringify(contents, null, 2));
     }
 }
 
